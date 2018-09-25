@@ -1,4 +1,5 @@
 from scrape_nfl.web_driver import SeleniumHelper
+from scrape_nfl.variables import nfl_injury_links
 import requests
 import json
 from bs4 import BeautifulSoup
@@ -212,27 +213,39 @@ def get_injuries():
     try_date = None
     base_url = 'https://web.archive.org/web/{}/nfl.com/injuries'
     for yr, wk, dict_ref in loop_weeks(injury_data, yr_start=2014):
-        page_wk = 0
-        start_date = date(yr, 9, 9) if wk == 1 else date(yr, 9, 3)
-        try_date = start_date + timedelta(days=7*wk)
-        while page_wk != wk:
-            try_string = str(try_date.year) + str(try_date.month).zfill(2) + str(try_date.day).zfill(2)
-            url = base_url.format(try_string)
-
+        try:
+            url = nfl_injury_links[yr][wk]
             web_driver.navigateToUrl(url)
             content = web_driver.getContent()
-            # sleep(10)
             soup = BeautifulSoup(content, 'html.parser')
-            try:
-                page_wk = int(re.search('NFL INJURIES WEEK (\d{1,2})', soup.text, re.IGNORECASE).group(1))
-            except:
-                page_wk = 0
-            if page_wk > wk:
-                try_date = try_date - timedelta(days=1)
-            elif page_wk < wk:
-                try_date = try_date + timedelta(days=1)
-            else:
-                print(yr, wk, url)
+        except:
+            page_wk = 0
+            start_date = date(yr, 9, 9) if wk == 1 else date(yr, 9, 3)
+            try_date = start_date + timedelta(days=7*wk)
+            while page_wk != wk:
+                try_string = str(try_date.year) + str(try_date.month).zfill(2) + str(try_date.day).zfill(2)
+                if yr == 2016:
+                    if wk == 1:
+                        url = 'https://web.archive.org/web/20151107185909/http://www.nfl.com:80/injuries?week=1'
+                    if wk == 12:
+                        url = 'https://web.archive.org/web/20180726041344/http://www.nfl.com/injuries?week=12'
+                else:
+                    url = base_url.format(try_string)
+
+                web_driver.navigateToUrl(url)
+                content = web_driver.getContent()
+                # sleep(10)
+                soup = BeautifulSoup(content, 'html.parser')
+                try:
+                    page_wk = int(re.search('NFL INJURIES WEEK (\d{1,2})', soup.text, re.IGNORECASE).group(1))
+                except:
+                    page_wk = 0
+                if page_wk > wk:
+                    try_date = try_date - timedelta(days=1)
+                elif page_wk < wk:
+                    try_date = try_date + timedelta(days=1)
+                else:
+                    print(yr, wk, url)
 
         wk_data = []
         raw_text = soup.text
